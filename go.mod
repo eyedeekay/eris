@@ -6,7 +6,7 @@ require (
 	github.com/goshuirc/e-nfa v0.0.0-20160917075329-7071788e3940 // indirect
 	github.com/imdario/mergo v0.3.9
 	github.com/mmcloughlin/professor v0.0.0-20170922221822-6b97112ab8b3
-	github.com/prometheus/client_golang v0.9.2
+	github.com/prometheus/client_golang v0.9.4
 	github.com/renstrom/shortuuid v3.0.0+incompatible
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.2.2
