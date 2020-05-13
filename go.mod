@@ -13,5 +13,5 @@ require (
 	github.com/thoj/go-ircevent v0.0.0-20180816043103-14f3614f28c3
 	golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9
 	golang.org/x/text v0.3.2
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.3.0
 )
