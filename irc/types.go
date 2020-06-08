@@ -94,6 +94,67 @@ func (c *ChannelNameMap) Remove(channel *Channel) error {
 	return nil
 }
 
+// UserModeSet holds a mapping of channel modes
+type UserModeSet struct {
+	sync.RWMutex
+	modes map[UserMode]bool
+}
+
+// NewUserModeSet returns a new UserModeSet
+func NewUserModeSet() *UserModeSet {
+	return &UserModeSet{modes: make(map[UserMode]bool)}
+}
+
+// Set sets mode
+func (set *UserModeSet) Set(mode UserMode) {
+	set.Lock()
+	defer set.Unlock()
+	set.modes[mode] = true
+}
+
+// Unset unsets mode
+func (set *UserModeSet) Unset(mode UserMode) {
+	set.Lock()
+	defer set.Unlock()
+	delete(set.modes, mode)
+}
+
+// Has returns true if the mode is set
+func (set *UserModeSet) Has(mode UserMode) bool {
+	set.RLock()
+	defer set.RUnlock()
+	ok, _ := set.modes[mode]
+	return ok
+}
+
+// Range ranges of the modes calling f
+func (set *UserModeSet) Range(f func(mode UserMode) bool) {
+	set.RLock()
+	defer set.RUnlock()
+	for mode := range set.modes {
+		if !f(mode) {
+			return
+		}
+	}
+}
+
+// String returns a string representing the channel modes
+func (set *UserModeSet) String() string {
+	set.RLock()
+	defer set.RUnlock()
+
+	if len(set.modes) == 0 {
+		return ""
+	}
+	strs := make([]string, len(set.modes))
+	index := 0
+	for mode := range set.modes {
+		strs[index] = mode.String()
+		index++
+	}
+	return strings.Join(strs, "")
+}
+
 // ChannelModeSet holds a mapping of channel modes
 type ChannelModeSet struct {
 	sync.RWMutex

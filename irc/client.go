@@ -47,7 +47,7 @@ type Client struct {
 	capState     CapState
 	channels     *ChannelSet
 	ctime        time.Time
-	flags        map[UserMode]bool
+	modes        *UserModeSet
 	hasQuit      *SyncBool
 	hops         uint
 	hostname     Name
@@ -74,7 +74,7 @@ func NewClient(server *Server, conn net.Conn) *Client {
 		capabilities: make(CapabilitySet),
 		channels:     NewChannelSet(),
 		ctime:        now,
-		flags:        make(map[UserMode]bool),
+		modes:        NewUserModeSet(),
 		hasQuit:      NewSyncBool(false),
 		sasl:         NewSaslState(),
 		server:       server,
@@ -83,7 +83,7 @@ func NewClient(server *Server, conn net.Conn) *Client {
 	}
 
 	if _, ok := conn.(*tls.Conn); ok {
-		c.flags[SecureConn] = true
+		c.modes.Set(SecureConn)
 	}
 
 	c.Touch()
@@ -240,7 +240,7 @@ func (c *Client) Register() {
 		return
 	}
 	c.registered = true
-	c.flags[HostMask] = true
+	c.modes.Set(HostMask)
 	c.Touch()
 }
 
@@ -300,23 +300,16 @@ func (c *Client) HasUsername() bool {
 }
 
 func (c *Client) CanSpeak(target *Client) bool {
-	requiresSecure := c.flags[SecureOnly] || target.flags[SecureOnly]
-	isSecure := c.flags[SecureConn] && target.flags[SecureConn]
-	isOperator := c.flags[Operator]
+	requiresSecure := c.modes.Has(SecureOnly) || target.modes.Has(SecureOnly)
+	isSecure := c.modes.Has(SecureConn) && target.modes.Has(SecureConn)
+	isOperator := c.modes.Has(Operator)
 
 	return !requiresSecure || (requiresSecure && (isOperator || isSecure))
 }
 
 // <mode>
 func (c *Client) ModeString() (str string) {
-	for flag := range c.flags {
-		str += flag.String()
-	}
-
-	if len(str) > 0 {
-		str = "+" + str
-	}
-	return
+	return c.modes.String()
 }
 
 func (c *Client) UserHost(cloacked bool) Name {

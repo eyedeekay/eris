@@ -67,7 +67,7 @@ type OperNickCommand struct {
 func (msg *OperNickCommand) HandleServer(server *Server) {
 	client := msg.Client()
 
-	if !client.flags[Operator] {
+	if !client.modes.Has(Operator) {
 		client.ErrNoPrivileges()
 		return
 	}
