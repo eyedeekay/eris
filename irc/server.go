@@ -173,7 +173,7 @@ func NewServer(config *Config) *Server {
 func (server *Server) Wallops(message string) {
 	text := NewText(message)
 	server.clients.Range(func(_ Name, client *Client) bool {
-		if client.flags[WallOps] {
+		if client.modes.Has(WallOps) {
 			server.metrics.Counter("client", "messages").Inc()
 			client.replies <- RplNotice(server, client, text)
 		}
@@ -408,7 +408,7 @@ func (msg *RFC2812UserCommand) HandleRegServer(server *Server) {
 	flags := msg.Flags()
 	if len(flags) > 0 {
 		for _, mode := range flags {
-			client.flags[mode] = true
+			client.modes.Set(mode)
 		}
 		client.RplUModeIs(client)
 	}
@@ -495,7 +495,7 @@ func (msg *AuthenticateCommand) HandleRegServer(server *Server) {
 	client.RplLoggedIn(authcid)
 	client.RplSaslSuccess()
 
-	client.flags[Registered] = true
+	client.modes.Set(Registered)
 	client.Reply(
 		RplModeChanges(
 			client, client,
@@ -624,7 +624,7 @@ func (msg *PrivMsgCommand) HandleServer(server *Server) {
 	}
 	server.metrics.Counter("client", "messages").Inc()
 	target.Reply(RplPrivMsg(client, target, msg.message))
-	if target.flags[Away] {
+	if target.modes.Has(Away) {
 		client.RplAway(target)
 	}
 }
@@ -673,7 +673,7 @@ func (m *WhoisCommand) HandleServer(server *Server) {
 
 func whoChannel(client *Client, channel *Channel, friends *ClientSet) {
 	channel.members.Range(func(member *Client, _ *ChannelModeSet) bool {
-		if !client.flags[Invisible] || friends.Has(client) {
+		if !client.modes.Has(Invisible) || friends.Has(client) {
 			client.RplWhoReply(channel, member)
 		}
 		return true
@@ -715,8 +715,8 @@ func (msg *OperCommand) HandleServer(server *Server) {
 		return
 	}
 
-	client.flags[Operator] = true
-	client.flags[WallOps] = true
+	client.modes.Set(Operator)
+	client.modes.Set(WallOps)
 	client.RplYoureOper()
 	client.Reply(
 		RplModeChanges(
@@ -731,7 +731,7 @@ func (msg *OperCommand) HandleServer(server *Server) {
 
 func (msg *RehashCommand) HandleServer(server *Server) {
 	client := msg.Client()
-	if !client.flags[Operator] {
+	if !client.modes.Has(Operator) {
 		client.ErrNoPrivileges()
 		return
 	}
@@ -756,9 +756,9 @@ func (msg *RehashCommand) HandleServer(server *Server) {
 func (msg *AwayCommand) HandleServer(server *Server) {
 	client := msg.Client()
 	if len(msg.text) > 0 {
-		client.flags[Away] = true
+		client.modes.Set(Away)
 	} else {
-		delete(client.flags, Away)
+		client.modes.Unset(Away)
 	}
 	client.awayMessage = msg.text
 }
@@ -783,7 +783,7 @@ func (msg *MOTDCommand) HandleServer(server *Server) {
 func (msg *NoticeCommand) HandleServer(server *Server) {
 	client := msg.Client()
 
-	if msg.target == "*" && client.flags[Operator] {
+	if msg.target == "*" && client.modes.Has(Operator) {
 		server.Global(msg.message.String())
 		return
 	}
@@ -932,7 +932,7 @@ func (msg *LUsersCommand) HandleServer(server *Server) {
 
 func (msg *WallopsCommand) HandleServer(server *Server) {
 	client := msg.Client()
-	if !client.flags[Operator] {
+	if !client.modes.Has(Operator) {
 		client.ErrNoPrivileges()
 		return
 	}
@@ -942,7 +942,7 @@ func (msg *WallopsCommand) HandleServer(server *Server) {
 
 func (msg *KillCommand) HandleServer(server *Server) {
 	client := msg.Client()
-	if !client.flags[Operator] {
+	if !client.modes.Has(Operator) {
 		client.ErrNoPrivileges()
 		return
 	}

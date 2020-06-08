@@ -108,7 +108,7 @@ func (m *ModeCommand) HandleServer(s *Server) {
 		return
 	}
 
-	if client != target && !client.flags[Operator] {
+	if client != target && !client.modes.Has(Operator) {
 		client.ErrUsersDontMatch()
 		return
 	}
@@ -120,26 +120,24 @@ func (m *ModeCommand) HandleServer(s *Server) {
 		case Invisible, HostMask, WallOps, SecureOnly:
 			switch change.op {
 			case Add:
-				if target.flags[change.mode] {
+				if target.modes.Has(change.mode) {
 					continue
 				}
-				target.flags[change.mode] = true
+				target.modes.Set(change.mode)
 				changes = append(changes, change)
-
 			case Remove:
-				if !target.flags[change.mode] {
+				if !target.modes.Has(change.mode) {
 					continue
 				}
-				delete(target.flags, change.mode)
+				target.modes.Unset(change.mode)
 				changes = append(changes, change)
 			}
-
 		case Operator:
 			if change.op == Remove {
-				if !target.flags[change.mode] {
+				if !target.modes.Has(change.mode) {
 					continue
 				}
-				delete(target.flags, change.mode)
+				target.modes.Unset(change.mode)
 				changes = append(changes, change)
 			}
 		}

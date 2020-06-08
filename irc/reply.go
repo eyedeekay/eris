@@ -249,13 +249,13 @@ func (target *Client) RplRehashing() {
 
 func (target *Client) RplWhois(client *Client) {
 	target.RplWhoisUser(client)
-	if client.flags[Operator] {
+	if client.modes.Has(Operator) {
 		target.RplWhoisOperator(client)
 	}
 	target.RplWhoisIdle(client)
 	target.RplWhoisChannels(client)
 
-	if client.flags[SecureConn] {
+	if client.modes.Has(SecureConn) {
 		target.RplWhoisSecure(client)
 	}
 	target.RplWhoisServer(client)
@@ -266,7 +266,7 @@ func (target *Client) RplWhois(client *Client) {
 func (target *Client) RplWhoisUser(client *Client) {
 	var clientHost Name
 
-	if target.flags[Operator] || !client.flags[HostMask] {
+	if target.modes.Has(Operator) || !client.modes.Has(HostMask) {
 		clientHost = client.hostname
 	} else {
 		clientHost = client.hostmask
@@ -342,7 +342,7 @@ func (target *Client) RplChannelModeIs(channel *Channel) {
 func (target *Client) RplWhoReply(channel *Channel, client *Client) {
 	var clientHost Name
 
-	if target.flags[Operator] || !client.flags[HostMask] {
+	if target.modes.Has(Operator) || !client.modes.Has(HostMask) {
 		clientHost = client.hostname
 	} else {
 		clientHost = client.hostmask
@@ -351,12 +351,12 @@ func (target *Client) RplWhoReply(channel *Channel, client *Client) {
 	channelName := "*"
 	flags := ""
 
-	if client.flags[Away] {
+	if client.modes.Has(Away) {
 		flags = "G"
 	} else {
 		flags = "H"
 	}
-	if client.flags[Operator] {
+	if client.modes.Has(Operator) {
 		flags += "*"
 	}
 
@@ -579,7 +579,7 @@ func (target *Client) RplLUserChannels() {
 func (target *Client) RplLUserOp() {
 	nOperators := 0
 	target.server.clients.Range(func(_ Name, client *Client) bool {
-		if client.flags[Operator] {
+		if client.modes.Has(Operator) {
 			nOperators++
 		}
 		return true
@@ -610,7 +610,7 @@ func (target *Client) RplLUserMe() {
 func (target *Client) RplWhoWasUser(whoWas *WhoWas) {
 	var whoWasHost Name
 
-	if target.flags[Operator] {
+	if target.modes.Has(Operator) {
 		whoWasHost = whoWas.hostname
 	} else {
 		whoWasHost = whoWas.hostmask

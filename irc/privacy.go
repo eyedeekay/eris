@@ -5,9 +5,9 @@ func CanSeeChannel(client *Client, channel *Channel) bool {
 	isSecret := channel.flags.Has(Secret)
 
 	isMember := channel.members.Has(client)
-	isOperator := client.flags[Operator]
-	isRegistered := client.flags[Registered]
-	isSecure := client.flags[SecureConn]
+	isOperator := client.modes.Has(Operator)
+	isRegistered := client.modes.Has(Registered)
+	isSecure := client.modes.Has(SecureConn)
 
 	if !(isSecret || isPrivate) {
 		return true

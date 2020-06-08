@@ -51,7 +51,7 @@ func (channel *Channel) Names(client *Client) {
 }
 
 func (channel *Channel) ClientIsOperator(client *Client) bool {
-	return client.flags[Operator] || channel.members.HasMode(client, ChannelOperator)
+	return client.modes.Has(Operator) || channel.members.HasMode(client, ChannelOperator)
 }
 
 func (channel *Channel) Nicks(target *Client) []string {
@@ -96,7 +96,7 @@ func (channel *Channel) String() string {
 
 // <mode> <mode params>
 func (channel *Channel) ModeString(client *Client) (str string) {
-	isMember := client.flags[Operator] || channel.members.Has(client)
+	isMember := client.modes.Has(Operator) || channel.members.Has(client)
 	showKey := isMember && (channel.key != "")
 	showUserLimit := channel.userLimit > 0
 
@@ -244,7 +244,7 @@ func (channel *Channel) CanSpeak(client *Client) bool {
 		channel.members.HasMode(client, ChannelOperator)) {
 		return false
 	}
-	if channel.flags.Has(SecureChan) && !client.flags[SecureConn] {
+	if channel.flags.Has(SecureChan) && !client.modes.Has(SecureConn) {
 		return false
 	}
 	return true
@@ -513,7 +513,7 @@ func (channel *Channel) Invite(invitee *Client, inviter *Client) {
 
 	inviter.RplInviting(invitee, channel.name)
 	invitee.Reply(RplInviteMsg(inviter, invitee, channel.name))
-	if invitee.flags[Away] {
+	if invitee.modes.Has(Away) {
 		inviter.RplAway(invitee)
 	}
 }
