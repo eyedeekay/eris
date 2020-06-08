@@ -67,7 +67,7 @@ type Client struct {
 
 func NewClient(server *Server, conn net.Conn) *Client {
 	now := time.Now()
-	client := &Client{
+	c := &Client{
 		atime:        now,
 		authorized:   len(server.password) == 0,
 		capState:     CapNone,
@@ -83,51 +83,50 @@ func NewClient(server *Server, conn net.Conn) *Client {
 	}
 
 	if _, ok := conn.(*tls.Conn); ok {
-		client.flags[SecureConn] = true
+		c.flags[SecureConn] = true
 	}
 
-	client.Touch()
-	go client.writeloop()
-	go client.readloop()
+	c.Touch()
+	go c.writeloop()
+	go c.readloop()
 
-	return client
+	return c
 }
 
 //
 // command goroutine
 //
 
-func (client *Client) writeloop() {
+func (c *Client) writeloop() {
 	for {
 		select {
-		case reply, ok := <-client.replies:
-			if !ok || reply == "" || client.socket == nil {
+		case reply, ok := <-c.replies:
+			if !ok || reply == "" || c.socket == nil {
 				return
 			}
-			client.socket.Write(reply)
+			c.socket.Write(reply)
 		}
 	}
 }
 
-func (client *Client) readloop() {
+func (c *Client) readloop() {
 	var command Command
 	var err error
 	var line string
 
 	// Set the hostname for this client.
-	client.hostname = AddrLookupHostname(client.socket.conn.RemoteAddr())
-	client.hostmask = NewName(SHA256(client.hostname.String()))
+	c.hostname = AddrLookupHostname(c.socket.conn.RemoteAddr())
+	c.hostmask = NewName(SHA256(c.hostname.String()))
 
 	for err == nil {
-		if line, err = client.socket.Read(); err != nil {
+		if line, err = c.socket.Read(); err != nil {
 			command = NewQuitCommand("connection closed")
 
 		} else if command, err = ParseCommand(line); err != nil {
 			switch err {
 			case ErrParseCommand:
 				//TODO(dan): use the real failed numeric for this (400)
-				client.Reply(RplNotice(client.server, client,
-					NewText("failed to parse command")))
+				c.Reply(RplNotice(c.server, c, NewText("failed to parse command")))
 
 			case NotEnoughArgsError:
 				// TODO
@@ -137,7 +136,7 @@ func (client *Client) readloop() {
 			continue
 
 		} else if checkPass, ok := command.(checkPasswordCommand); ok {
-			checkPass.LoadPassword(client.server)
+			checkPass.LoadPassword(c.server)
 			// Block the client thread while handling a potentially expensive
 			// password bcrypt operation. Since the server is single-threaded
 			// for commands, we don't want the server to perform the bcrypt,
@@ -146,164 +145,164 @@ func (client *Client) readloop() {
 			checkPass.CheckPassword()
 		}
 
-		client.processCommand(command)
+		c.processCommand(command)
 	}
 }
 
-func (client *Client) processCommand(cmd Command) {
-	cmd.SetClient(client)
+func (c *Client) processCommand(cmd Command) {
+	cmd.SetClient(c)
 
-	if !client.registered {
+	if !c.registered {
 		regCmd, ok := cmd.(RegServerCommand)
 		if !ok {
-			client.Quit("unexpected command")
+			c.Quit("unexpected command")
 			return
 		}
-		regCmd.HandleRegServer(client.server)
+		regCmd.HandleRegServer(c.server)
 		return
 	}
 
 	srvCmd, ok := cmd.(ServerCommand)
 	if !ok {
-		client.ErrUnknownCommand(cmd.Code())
+		c.ErrUnknownCommand(cmd.Code())
 		return
 	}
 
-	client.server.metrics.Counter("client", "commands").Inc()
+	c.server.metrics.Counter("client", "commands").Inc()
 
 	defer func(t time.Time) {
-		v := client.server.metrics.SummaryVec("client", "command_duration_seconds")
+		v := c.server.metrics.SummaryVec("client", "command_duration_seconds")
 		v.WithLabelValues(cmd.Code().String()).Observe(time.Now().Sub(t).Seconds())
 	}(time.Now())
 
 	switch srvCmd.(type) {
 	case *PingCommand, *PongCommand:
-		client.Touch()
+		c.Touch()
 
 	case *QuitCommand:
 		// no-op
 
 	default:
-		client.Active()
-		client.Touch()
+		c.Active()
+		c.Touch()
 	}
 
-	srvCmd.HandleServer(client.server)
+	srvCmd.HandleServer(c.server)
 }
 
 // quit timer goroutine
 
-func (client *Client) connectionTimeout() {
-	client.processCommand(NewQuitCommand("connection timeout"))
+func (c *Client) connectionTimeout() {
+	c.processCommand(NewQuitCommand("connection timeout"))
 }
 
 //
 // idle timer goroutine
 //
 
-func (client *Client) connectionIdle() {
-	client.server.idle <- client
+func (c *Client) connectionIdle() {
+	c.server.idle <- c
 }
 
 //
 // server goroutine
 //
 
-func (client *Client) Active() {
-	client.atime = time.Now()
+func (c *Client) Active() {
+	c.atime = time.Now()
 }
 
-func (client *Client) Touch() {
-	if client.quitTimer != nil {
-		client.quitTimer.Stop()
+func (c *Client) Touch() {
+	if c.quitTimer != nil {
+		c.quitTimer.Stop()
 	}
 
-	if client.idleTimer == nil {
-		client.idleTimer = time.AfterFunc(IDLE_TIMEOUT, client.connectionIdle)
+	if c.idleTimer == nil {
+		c.idleTimer = time.AfterFunc(IDLE_TIMEOUT, c.connectionIdle)
 	} else {
-		client.idleTimer.Reset(IDLE_TIMEOUT)
+		c.idleTimer.Reset(IDLE_TIMEOUT)
 	}
 }
 
-func (client *Client) Idle() {
-	client.pingTime = time.Now()
-	client.Reply(RplPing(client.server))
+func (c *Client) Idle() {
+	c.pingTime = time.Now()
+	c.Reply(RplPing(c.server))
 
-	if client.quitTimer == nil {
-		client.quitTimer = time.AfterFunc(QUIT_TIMEOUT, client.connectionTimeout)
+	if c.quitTimer == nil {
+		c.quitTimer = time.AfterFunc(QUIT_TIMEOUT, c.connectionTimeout)
 	} else {
-		client.quitTimer.Reset(QUIT_TIMEOUT)
+		c.quitTimer.Reset(QUIT_TIMEOUT)
 	}
 }
 
-func (client *Client) Register() {
-	if client.registered {
+func (c *Client) Register() {
+	if c.registered {
 		return
 	}
-	client.registered = true
-	client.flags[HostMask] = true
-	client.Touch()
+	c.registered = true
+	c.flags[HostMask] = true
+	c.Touch()
 }
 
-func (client *Client) destroy() {
+func (c *Client) destroy() {
 	// clean up channels
 
-	client.channels.Range(func(channel *Channel) bool {
-		channel.Quit(client)
+	c.channels.Range(func(channel *Channel) bool {
+		channel.Quit(c)
 		return true
 	})
 
 	// clean up server
 
-	if _, ok := client.socket.conn.(*tls.Conn); ok {
-		client.server.metrics.GaugeVec("server", "clients").WithLabelValues("secure").Dec()
+	if _, ok := c.socket.conn.(*tls.Conn); ok {
+		c.server.metrics.GaugeVec("server", "clients").WithLabelValues("secure").Dec()
 	} else {
-		client.server.metrics.GaugeVec("server", "clients").WithLabelValues("insecure").Dec()
+		c.server.metrics.GaugeVec("server", "clients").WithLabelValues("insecure").Dec()
 	}
 
-	client.server.connections.Dec()
-	client.server.clients.Remove(client)
+	c.server.connections.Dec()
+	c.server.clients.Remove(c)
 
 	// clean up self
 
-	if client.idleTimer != nil {
-		client.idleTimer.Stop()
+	if c.idleTimer != nil {
+		c.idleTimer.Stop()
 	}
-	if client.quitTimer != nil {
-		client.quitTimer.Stop()
+	if c.quitTimer != nil {
+		c.quitTimer.Stop()
 	}
 
-	close(client.replies)
+	close(c.replies)
 
-	client.socket.Close()
+	c.socket.Close()
 
-	log.Debugf("%s: destroyed", client)
+	log.Debugf("%s: destroyed", c)
 }
 
-func (client *Client) IdleTime() time.Duration {
-	return time.Since(client.atime)
+func (c *Client) IdleTime() time.Duration {
+	return time.Since(c.atime)
 }
 
-func (client *Client) SignonTime() int64 {
-	return client.ctime.Unix()
+func (c *Client) SignonTime() int64 {
+	return c.ctime.Unix()
 }
 
-func (client *Client) IdleSeconds() uint64 {
-	return uint64(client.IdleTime().Seconds())
+func (c *Client) IdleSeconds() uint64 {
+	return uint64(c.IdleTime().Seconds())
 }
 
-func (client *Client) HasNick() bool {
-	return client.nick != ""
+func (c *Client) HasNick() bool {
+	return c.nick != ""
 }
 
-func (client *Client) HasUsername() bool {
-	return client.username != ""
+func (c *Client) HasUsername() bool {
+	return c.username != ""
 }
 
-func (client *Client) CanSpeak(target *Client) bool {
-	requiresSecure := client.flags[SecureOnly] || target.flags[SecureOnly]
-	isSecure := client.flags[SecureConn] && target.flags[SecureConn]
-	isOperator := client.flags[Operator]
+func (c *Client) CanSpeak(target *Client) bool {
+	requiresSecure := c.flags[SecureOnly] || target.flags[SecureOnly]
+	isSecure := c.flags[SecureConn] && target.flags[SecureConn]
+	isOperator := c.flags[Operator]
 
 	return !requiresSecure || (requiresSecure && (isOperator || isSecure))
 }
@@ -322,13 +321,13 @@ func (c *Client) ModeString() (str string) {
 
 func (c *Client) UserHost(cloacked bool) Name {
 	username := "*"
-	if c.HasUsername() {
+	if c.username != "" {
 		username = c.username.String()
 	}
 	if cloacked {
-		return Name(fmt.Sprintf("%s!%s@%s", c.Nick(), username, c.hostmask))
+		return Name(fmt.Sprintf("%s!%s@%s", c.nick, username, c.hostmask))
 	}
-	return Name(fmt.Sprintf("%s!%s@%s", c.Nick(), username, c.hostname))
+	return Name(fmt.Sprintf("%s!%s@%s", c.nick, username, c.hostname))
 }
 
 func (c *Client) Server() Name {
@@ -354,10 +353,10 @@ func (c *Client) String() string {
 	return c.Id().String()
 }
 
-func (client *Client) Friends() *ClientSet {
+func (c *Client) Friends() *ClientSet {
 	friends := NewClientSet()
-	friends.Add(client)
-	client.channels.Range(func(channel *Channel) bool {
+	friends.Add(c)
+	c.channels.Range(func(channel *Channel) bool {
 		channel.members.Range(func(member *Client, _ *ChannelModeSet) bool {
 			friends.Add(member)
 			return true
@@ -367,48 +366,48 @@ func (client *Client) Friends() *ClientSet {
 	return friends
 }
 
-func (client *Client) SetNickname(nickname Name) {
-	if client.HasNick() {
-		log.Errorf("%s nickname already set!", client)
+func (c *Client) SetNickname(nickname Name) {
+	if c.nick != "" {
+		log.Errorf("%s nickname already set!", c)
 		return
 	}
-	client.nick = nickname
-	client.server.clients.Add(client)
+	c.nick = nickname
+	c.server.clients.Add(c)
 }
 
-func (client *Client) ChangeNickname(nickname Name) {
+func (c *Client) ChangeNickname(nickname Name) {
 	// Make reply before changing nick to capture original source id.
-	reply := RplNick(client, nickname)
-	client.server.clients.Remove(client)
-	client.server.whoWas.Append(client)
-	client.nick = nickname
-	client.server.clients.Add(client)
-	client.Friends().Range(func(friend *Client) bool {
+	reply := RplNick(c, nickname)
+	c.server.clients.Remove(c)
+	c.server.whoWas.Append(c)
+	c.nick = nickname
+	c.server.clients.Add(c)
+	c.Friends().Range(func(friend *Client) bool {
 		friend.Reply(reply)
 		return true
 	})
 }
 
-func (client *Client) Reply(reply string) {
-	if !client.hasQuit.Get() {
-		client.replies <- reply
+func (c *Client) Reply(reply string) {
+	if !c.hasQuit.Get() {
+		c.replies <- reply
 	}
 }
 
-func (client *Client) Quit(message Text) {
-	if client.hasQuit.Get() {
+func (c *Client) Quit(message Text) {
+	if c.hasQuit.Get() {
 		return
 	}
 
-	client.hasQuit.Set(true)
-	client.Reply(RplError("quit"))
-	client.server.whoWas.Append(client)
-	friends := client.Friends()
-	friends.Remove(client)
-	client.destroy()
+	c.hasQuit.Set(true)
+	c.Reply(RplError("quit"))
+	c.server.whoWas.Append(c)
+	friends := c.Friends()
+	friends.Remove(c)
+	c.destroy()
 
 	if friends.Count() > 0 {
-		reply := RplQuit(client, message)
+		reply := RplQuit(c, message)
 		friends.Range(func(friend *Client) bool {
 			friend.Reply(reply)
 			return true
