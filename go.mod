@@ -1,5 +1,7 @@
 module github.com/prologic/eris
 
+go 1.14
+
 require (
 	github.com/DanielOaks/girc-go v0.0.0-20180430075055-8d136c4f9287
 	github.com/google/uuid v1.1.0 // indirect
