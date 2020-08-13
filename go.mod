@@ -6,7 +6,7 @@ require (
 	github.com/DanielOaks/girc-go v0.0.0-20180430075055-8d136c4f9287
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/goshuirc/e-nfa v0.0.0-20160917075329-7071788e3940 // indirect
-	github.com/imdario/mergo v0.3.9
+	github.com/imdario/mergo v0.3.11
 	github.com/mmcloughlin/professor v0.0.0-20170922221822-6b97112ab8b3
 	github.com/prometheus/client_golang v0.9.4
 	github.com/renstrom/shortuuid v3.0.0+incompatible
