@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/DanielOaks/girc-go v0.0.0-20180430075055-8d136c4f9287
+	github.com/cretz/bine v0.1.0
 	github.com/eyedeekay/sam3 v0.32.31
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/goshuirc/e-nfa v0.0.0-20160917075329-7071788e3940 // indirect

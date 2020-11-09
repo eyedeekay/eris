@@ -3,6 +3,7 @@ package irc
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
@@ -14,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cretz/bine/tor"
+	"github.com/cretz/bine/torutil/ed25519"
 	"github.com/eyedeekay/sam3"
 	"github.com/eyedeekay/sam3/i2pkeys"
 	log "github.com/sirupsen/logrus"
@@ -102,6 +105,14 @@ func NewServer(config *Config) *Server {
 		err := config.StoreConfig()
 		if err != nil {
 			log.Fatalf("error storing I2P base32 address in config")
+		}
+	}
+
+	for addr, torconfig := range config.Server.TorListen {
+		server.listentor(addr, torconfig)
+		err := config.StoreConfig()
+		if err != nil {
+			log.Fatalf("error storing Tor onion address in config")
 		}
 	}
 
@@ -307,43 +318,94 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 	if _, err := os.Stat(i2pconfig.I2Pkeys); os.IsNotExist(err) {
 		f, err := os.Create(i2pconfig.I2Pkeys)
 		if err != nil {
-			log.Fatalf("Keyfile creation error: %s", err)
+			log.Fatalf("unable to open I2P keyfile for writing: %s", err)
 		}
 		defer f.Close()
-		if err != nil {
-			log.Infof("Key loading error: %e", err)
-		}
 		tkeys, err := sam.NewKeys()
 		if err != nil {
-			log.Fatalf("Unable to load or generate I2P Keys, %s", err)
+			log.Fatalf("unable to generate I2P Keys, %s", err)
 		}
 		keys = &tkeys
 		err = i2pkeys.StoreKeysIncompat(*keys, f)
 		if err != nil {
-			log.Fatalf("Unable to save newly generated I2P Keys, %s", err)
+			log.Fatalf("unable to save newly generated I2P Keys, %s", err)
 		}
 		i2pconfig.Base32 = keys.Addr().Base32()
 	} else {
 		tkeys, err := i2pkeys.LoadKeys(i2pconfig.I2Pkeys)
 		if err != nil {
-			log.Infof("Key loading error: %e", err)
+			log.Fatalf("unable to load I2P Keys: %e", err)
 		}
 		keys = &tkeys
 	}
 	// If the keys and the base32 are different, keys win.
 	i2pconfig.Base32 = keys.Addr().Base32()
-
-	if err != nil {
-		log.Fatalf("error generating I2P keys %s: %s", addr, err)
-	}
 	stream, err := sam.NewStreamSession(addr, *keys, sam3.Options_Medium)
 	if err != nil {
-		log.Fatalf("error creating streaming connection %s: %s, %s.", addr, err, *keys)
+		log.Fatalf("error creating I2P streaming connection %s: %s, %s.", addr, err, *keys)
 	}
 	listener, err := stream.Listen()
 	if err != nil {
 		log.Fatalf("error binding to %s: %s", keys.Addr().Base32(), err)
 	}
+	log.Infof("Listening on I2P address, %s", keys.Addr().Base32(), err)
+	go s.acceptor(listener)
+}
+
+func (s *Server) listentor(addr string, torconfig *TorConfig) {
+	// Start tor with default config (can set start conf's DebugWriter to os.Stdout for debug logs)
+	log.Infof("Starting and registering onion service, please wait a couple of minutes...")
+	t, err := tor.Start(nil, &tor.StartConf{ControlPort: torconfig.ControlPort})
+	if err != nil {
+		log.Fatalf("Unable to start Tor: %v", err)
+	}
+	var keys *ed25519.KeyPair
+	if _, err := os.Stat(torconfig.Torkeys); os.IsNotExist(err) {
+		tkeys, err := ed25519.GenerateKey(nil)
+		if err != nil {
+			log.Fatalf("Unable to generate onion service key, %s", err)
+		}
+		keys = &tkeys
+		f, err := os.Create(torconfig.Torkeys)
+		if err != nil {
+			log.Fatalf("Unable to create Tor keys file for writing, %s", err)
+		}
+		defer f.Close()
+		_, err = f.Write(tkeys.PrivateKey())
+		if err != nil {
+			log.Fatalf("Unable to write Tor keys to disk, %s", err)
+		}
+	} else if err == nil {
+		f, err := os.Open(torconfig.Torkeys)
+		if err != nil {
+			log.Fatalf("Unable to create Tor keys file for reading, %s", err)
+		}
+		defer f.Close()
+		tkeys := make([]byte, 64)
+		_, err = f.Read(tkeys)
+		if err != nil {
+			log.Fatalf("Unable to read Tor keys from disk")
+		}
+		k := ed25519.FromCryptoPrivateKey(tkeys)
+		keys = &k
+	} else {
+		log.Fatalf("Unable to set up Tor keys, %s", err)
+	}
+	listenCtx := context.Background()
+	// Create a v3 onion service to listen on any port but show as 80
+	listener, err := t.Listen(
+		listenCtx,
+		&tor.ListenConf{
+			Version3:    true,
+			RemotePorts: []int{6667},
+			Key:         *keys,
+		},
+	)
+	if err != nil {
+		log.Fatalf("Unable to create onion service: %v", err)
+	}
+	torconfig.Onion = listener.ID + ".onion"
+	log.Infof("Listening on Onion address, %s", listener.ID, torconfig.Onion, err)
 	go s.acceptor(listener)
 }
 

@@ -26,6 +26,12 @@ type I2PConfig struct {
 	Base32  string
 }
 
+type TorConfig struct {
+	Torkeys     string
+	ControlPort int
+	Onion       string
+}
+
 func (conf *PassConfig) PasswordBytes() []byte {
 	bytes, err := DecodePassword(conf.Password)
 	if err != nil {
@@ -47,6 +53,7 @@ type Config struct {
 		Listen      []string
 		TLSListen   map[string]*TLSConfig
 		I2PListen   map[string]*I2PConfig
+		TorListen   map[string]*TorConfig
 		Log         string
 		MOTD        string
 		Name        string

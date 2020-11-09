@@ -20,10 +20,22 @@ server:
       cert: cert.pem
   
   # Addresses to listen on for Invisible Internet
-  i2plisten:
-    "invisibleirc":
-      i2pkeys: iirc.i2pkeys
-      samaddr: "127.0.0.1:7656"
+  # note that if you choose this option, your ircd.yml will be
+  # rewritten to include the I2P address of your IRC server.
+  # You will lose any comments in your ircd.yml file
+  # i2plisten:
+    # "invisibleirc":
+      # i2pkeys: iirc.i2pkeys
+      # samaddr: "127.0.0.1:7656"
+
+  # Addresses to listen on for Tor Onion Services.
+  # note that if you choose this option, your ircd.yml will be
+  # rewritten to include the Onion address of your IRC server.
+  # You will lose any comments in your ircd.yml
+  # torlisten:
+    # hiddenirc:
+      # torkeys: tirc.torkeys
+      # controlport: 0
 
   # password to login to the server
    # generated using  "mkpasswd" (from https://github.com/prologic/mkpasswd)
