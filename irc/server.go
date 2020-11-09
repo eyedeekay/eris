@@ -305,6 +305,11 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 	}
 	var keys i2pkeys.I2PKeys
 	if _, err := os.Stat(i2pconfig.I2Pkeys); os.IsNotExist(err) {
+		f, err := os.Create(i2pconfig.I2Pkeys)
+		if err != nil {
+			log.Fatalf("Keyfile creation error: %s", err)
+		}
+		defer f.Close()
 		if err != nil {
 			log.Infof("Key loading error: %e", err)
 		}
@@ -312,7 +317,7 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 		if err != nil {
 			log.Fatalf("Unable to load or generate I2P Keys, %s", err)
 		}
-		err = i2pkeys.StoreKeys(keys, i2pconfig.I2Pkeys)
+		err = i2pkeys.StoreKeysIncompat(keys, f)
 		if err != nil {
 			log.Fatalf("Unable to save newly generated I2P Keys, %s", err)
 		}
