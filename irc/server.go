@@ -313,7 +313,10 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 		if err != nil {
 			log.Fatalf("Unable to save newly generated I2P Keys, %s", err)
 		}
+		i2pconfig.Base32 = keys.Addr().Base32()
 	}
+	// If the keys and the base32 are different, keys win.
+	i2pconfig.Base32 = keys.Addr().Base32()
 
 	if err != nil {
 		log.Fatalf("error generating I2P keys %s: %s", addr, err)
