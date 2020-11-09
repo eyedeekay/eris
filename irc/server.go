@@ -303,7 +303,7 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 	if err != nil {
 		log.Fatalf("error connecting to SAM to %s: %s", addr, err)
 	}
-	var keys i2pkeys.I2PKeys
+	var keys *i2pkeys.I2PKeys
 	if _, err := os.Stat(i2pconfig.I2Pkeys); os.IsNotExist(err) {
 		f, err := os.Create(i2pconfig.I2Pkeys)
 		if err != nil {
@@ -313,20 +313,22 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 		if err != nil {
 			log.Infof("Key loading error: %e", err)
 		}
-		keys, err := sam.NewKeys()
+		tkeys, err := sam.NewKeys()
 		if err != nil {
 			log.Fatalf("Unable to load or generate I2P Keys, %s", err)
 		}
-		err = i2pkeys.StoreKeysIncompat(keys, f)
+		keys = &tkeys
+		err = i2pkeys.StoreKeysIncompat(*keys, f)
 		if err != nil {
 			log.Fatalf("Unable to save newly generated I2P Keys, %s", err)
 		}
 		i2pconfig.Base32 = keys.Addr().Base32()
 	} else {
-		keys, err = i2pkeys.LoadKeys(i2pconfig.I2Pkeys)
+		tkeys, err := i2pkeys.LoadKeys(i2pconfig.I2Pkeys)
 		if err != nil {
 			log.Infof("Key loading error: %e", err)
 		}
+		keys = &tkeys
 	}
 	// If the keys and the base32 are different, keys win.
 	i2pconfig.Base32 = keys.Addr().Base32()
@@ -334,9 +336,9 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 	if err != nil {
 		log.Fatalf("error generating I2P keys %s: %s", addr, err)
 	}
-	stream, err := sam.NewStreamSession(addr, keys, sam3.Options_Medium)
+	stream, err := sam.NewStreamSession(addr, *keys, sam3.Options_Medium)
 	if err != nil {
-		log.Fatalf("error creating streaming connection %s: %s, %s.", addr, err, keys)
+		log.Fatalf("error creating streaming connection %s: %s, %s.", addr, err, *keys)
 	}
 	listener, err := stream.Listen()
 	if err != nil {
