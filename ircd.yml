@@ -18,6 +18,12 @@ server:
     ":6697":
       key: key.pem
       cert: cert.pem
+  
+  # Addresses to listen on for Invisible Internet
+  i2plisten:
+    "invisibleirc":
+      i2pkeys: iirc.i2pkeys
+      samaddr: "127.0.0.1:7656"
 
   # password to login to the server
    # generated using  "mkpasswd" (from https://github.com/prologic/mkpasswd)

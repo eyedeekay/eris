@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eyedeekay/sam3"
+	"github.com/eyedeekay/sam3/i2pkeys"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -93,6 +95,14 @@ func NewServer(config *Config) *Server {
 
 	for addr, tlsconfig := range config.Server.TLSListen {
 		server.listentls(addr, tlsconfig)
+	}
+
+	for addr, i2pconfig := range config.Server.I2PListen {
+		server.listeni2p(addr, i2pconfig)
+		err := config.StoreConfig()
+		if err != nil {
+			log.Fatalf("error storing I2P base32 address in config")
+		}
 	}
 
 	signal.Notify(server.signals, SERVER_SIGNALS...)
@@ -281,6 +291,41 @@ func (s *Server) listentls(addr string, tlsconfig *TLSConfig) {
 
 	log.Infof("%s listening on %s (TLS)", s, addr)
 
+	go s.acceptor(listener)
+}
+
+//
+// listen i2p goroutine
+//
+
+func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
+	sam, err := sam3.NewSAM(i2pconfig.SAMaddr)
+	if err != nil {
+		log.Fatalf("error connecting to SAM to %s: %s", addr, err)
+	}
+	var keys i2pkeys.I2PKeys
+	if keys, err = i2pkeys.LoadKeys(i2pconfig.I2Pkeys); err != nil {
+		keys, err = sam.NewKeys()
+		if err != nil {
+			log.Fatalf("Unable to load or generate I2P Keys, %s", err)
+		}
+		err = i2pkeys.StoreKeys(keys, i2pconfig.I2Pkeys)
+		if err != nil {
+			log.Fatalf("Unable to save newly generated I2P Keys, %s", err)
+		}
+	}
+
+	if err != nil {
+		log.Fatalf("error generating I2P keys %s: %s", addr, err)
+	}
+	stream, err := sam.NewStreamSession(addr, keys, sam3.Options_Medium)
+	if err != nil {
+		log.Fatalf("error creating streaming connection %s: %s", addr, err)
+	}
+	listener, err := stream.Listen()
+	if err != nil {
+		log.Fatalf("error binding to %s: %s", keys.Addr().Base32(), err)
+	}
 	go s.acceptor(listener)
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/imdario/mergo"
@@ -17,6 +18,12 @@ type PassConfig struct {
 type TLSConfig struct {
 	Key  string
 	Cert string
+}
+
+type I2PConfig struct {
+	I2Pkeys string
+	SAMaddr string
+	Base32  string
 }
 
 func (conf *PassConfig) PasswordBytes() []byte {
@@ -39,6 +46,7 @@ type Config struct {
 		PassConfig  `yaml:",inline"`
 		Listen      []string
 		TLSListen   map[string]*TLSConfig
+		I2PListen   map[string]*I2PConfig
 		Log         string
 		MOTD        string
 		Name        string
@@ -111,9 +119,25 @@ func LoadConfig(filename string) (config *Config, err error) {
 		return nil, errors.New("Server name must match the format of a hostname")
 	}
 
-	if len(config.Server.Listen)+len(config.Server.TLSListen) == 0 {
+	if len(config.Server.Listen)+len(config.Server.TLSListen)+len(config.Server.I2PListen) == 0 {
 		return nil, errors.New("Server listening addresses missing")
 	}
 
 	return config, nil
+}
+
+func (conf *Config) StoreConfig() error {
+	data, err := yaml.Marshal(conf)
+	if err != nil {
+		return err
+	}
+	info, err := os.Stat(conf.filename)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(conf.filename, data, info.Mode())
+	if err != nil {
+		return err
+	}
+	return nil
 }
