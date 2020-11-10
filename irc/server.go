@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -379,13 +380,7 @@ func (s *Server) listentor(addr string, torconfig *TorConfig) {
 			log.Fatalf("Unable to write Tor keys to disk, %s", err)
 		}
 	} else if err == nil {
-		f, err := os.Open(torconfig.Torkeys)
-		if err != nil {
-			log.Fatalf("Unable to create Tor keys file for reading, %s", err)
-		}
-		defer f.Close()
-		tkeys := make([]byte, 64)
-		_, err = f.Read(tkeys)
+		tkeys, err := ioutil.ReadFile(torconfig.Torkeys)
 		if err != nil {
 			log.Fatalf("Unable to read Tor keys from disk")
 		}
