@@ -352,8 +352,11 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 	go s.acceptor(listener)
 }
 
+//
+// listen tor goroutine
+//
+
 func (s *Server) listentor(addr string, torconfig *TorConfig) {
-	// Start tor with default config (can set start conf's DebugWriter to os.Stdout for debug logs)
 	log.Infof("Starting and registering onion service, please wait a couple of minutes...")
 	t, err := tor.Start(nil, &tor.StartConf{ControlPort: torconfig.ControlPort})
 	if err != nil {
@@ -392,7 +395,7 @@ func (s *Server) listentor(addr string, torconfig *TorConfig) {
 		log.Fatalf("Unable to set up Tor keys, %s", err)
 	}
 	listenCtx := context.Background()
-	// Create a v3 onion service to listen on any port but show as 80
+	// Create a v3 onion service to listen on any port but show as 6667
 	listener, err := t.Listen(
 		listenCtx,
 		&tor.ListenConf{
