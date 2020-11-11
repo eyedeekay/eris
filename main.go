@@ -45,4 +45,3 @@ func main() {
 
 	irc.NewServer(config).Run()
 }
-

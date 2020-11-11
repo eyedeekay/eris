@@ -25,7 +25,7 @@ server:
   # You will lose any comments in your ircd.yml file
   # i2plisten:
     # "invisibleirc":
-      # i2pkeys: iirc.i2pkeys
+      # i2pkeys: iirc
       # samaddr: "127.0.0.1:7656"
 
   # Addresses to listen on for Tor Onion Services.
@@ -34,7 +34,7 @@ server:
   # You will lose any comments in your ircd.yml
   # torlisten:
     # hiddenirc:
-      # torkeys: tirc.torkeys
+      # torkeys: tirc
       # controlport: 0
 
   # password to login to the server

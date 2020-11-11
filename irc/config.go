@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
-	"os"
 	"sync"
 
 	"github.com/imdario/mergo"
@@ -131,20 +130,4 @@ func LoadConfig(filename string) (config *Config, err error) {
 	}
 
 	return config, nil
-}
-
-func (conf *Config) StoreConfig() error {
-	data, err := yaml.Marshal(conf)
-	if err != nil {
-		return err
-	}
-	info, err := os.Stat(conf.filename)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(conf.filename, data, info.Mode())
-	if err != nil {
-		return err
-	}
-	return nil
 }

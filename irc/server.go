@@ -103,17 +103,17 @@ func NewServer(config *Config) *Server {
 
 	for addr, i2pconfig := range config.Server.I2PListen {
 		server.listeni2p(addr, i2pconfig)
-		err := config.StoreConfig()
+		err := ioutil.WriteFile(i2pconfig.I2Pkeys+".i2p.public.txt", []byte(i2pconfig.Base32), 0644)
 		if err != nil {
-			log.Fatalf("error storing I2P base32 address in config")
+			log.Fatalf("error storing I2P base32 address in adjacent text file")
 		}
 	}
 
 	for addr, torconfig := range config.Server.TorListen {
 		server.listentor(addr, torconfig)
-		err := config.StoreConfig()
+		err := ioutil.WriteFile(torconfig.Torkeys+".tor.public.txt", []byte(torconfig.Onion), 0644)
 		if err != nil {
-			log.Fatalf("error storing Tor onion address in config")
+			log.Fatalf("error storing Tor onion address in adjacent text file")
 		}
 	}
 
@@ -316,8 +316,8 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 		log.Fatalf("error connecting to SAM to %s: %s", addr, err)
 	}
 	var keys *i2pkeys.I2PKeys
-	if _, err := os.Stat(i2pconfig.I2Pkeys); os.IsNotExist(err) {
-		f, err := os.Create(i2pconfig.I2Pkeys)
+	if _, err := os.Stat(i2pconfig.I2Pkeys + ".i2p.private"); os.IsNotExist(err) {
+		f, err := os.Create(i2pconfig.I2Pkeys + ".i2p.private")
 		if err != nil {
 			log.Fatalf("unable to open I2P keyfile for writing: %s", err)
 		}
@@ -333,7 +333,7 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 		}
 		i2pconfig.Base32 = keys.Addr().Base32()
 	} else {
-		tkeys, err := i2pkeys.LoadKeys(i2pconfig.I2Pkeys)
+		tkeys, err := i2pkeys.LoadKeys(i2pconfig.I2Pkeys + ".i2p.private")
 		if err != nil {
 			log.Fatalf("unable to load I2P Keys: %e", err)
 		}
@@ -364,13 +364,13 @@ func (s *Server) listentor(addr string, torconfig *TorConfig) {
 		log.Fatalf("Unable to start Tor: %v", err)
 	}
 	var keys *ed25519.KeyPair
-	if _, err := os.Stat(torconfig.Torkeys); os.IsNotExist(err) {
+	if _, err := os.Stat(torconfig.Torkeys + ".tor.private"); os.IsNotExist(err) {
 		tkeys, err := ed25519.GenerateKey(nil)
 		if err != nil {
 			log.Fatalf("Unable to generate onion service key, %s", err)
 		}
 		keys = &tkeys
-		f, err := os.Create(torconfig.Torkeys)
+		f, err := os.Create(torconfig.Torkeys + ".tor.private")
 		if err != nil {
 			log.Fatalf("Unable to create Tor keys file for writing, %s", err)
 		}
@@ -380,7 +380,7 @@ func (s *Server) listentor(addr string, torconfig *TorConfig) {
 			log.Fatalf("Unable to write Tor keys to disk, %s", err)
 		}
 	} else if err == nil {
-		tkeys, err := ioutil.ReadFile(torconfig.Torkeys)
+		tkeys, err := ioutil.ReadFile(torconfig.Torkeys + ".tor.private")
 		if err != nil {
 			log.Fatalf("Unable to read Tor keys from disk")
 		}
