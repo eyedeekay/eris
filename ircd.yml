@@ -19,19 +19,13 @@ server:
       key: key.pem
       cert: cert.pem
   
-  # Addresses to listen on for Invisible Internet
-  # note that if you choose this option, your ircd.yml will be
-  # rewritten to include the I2P address of your IRC server.
-  # You will lose any comments in your ircd.yml file
+  # Instruct the server to listen as an I2P service.
   # i2plisten:
     # "invisibleirc":
       # i2pkeys: iirc
       # samaddr: "127.0.0.1:7656"
 
-  # Addresses to listen on for Tor Onion Services.
-  # note that if you choose this option, your ircd.yml will be
-  # rewritten to include the Onion address of your IRC server.
-  # You will lose any comments in your ircd.yml
+  # Instruct the server to listen as a Tor .onion service.
   # torlisten:
     # hiddenirc:
       # torkeys: tirc
@@ -58,3 +52,28 @@ account:
   admin:
    # password 'admin'
    password: JDJhJDA0JGtUU1JVc1JOUy9DbEh1WEdvYVlMdGVnclp6YnA3NDBOZGY1WUZhdTZtRzVmb1VKdXQ5ckZD
+
+
+# Start a web server to help people get the information they need to connect
+# to the IRC server.
+# www: 
+#   listen:
+#     - ":8080"
+#   tlslisten:
+#     ":8443":
+#       key: key.pem
+#       cert: cert.pem
+#   i2plisten:
+#     "i2pinfoirc":
+#       i2pkeys: iirc
+#       samaddr: "127.0.0.1:7656"
+#   torlisten:
+#     torinfoirc:
+#       torkeys: tirc
+#       controlport: 0
+#
+# This directory can be used to load templates for the informational web page
+# which can be used for alternate language support or custom pages.
+# templatedir: "lang"
+
+

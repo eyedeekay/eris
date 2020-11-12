@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -53,6 +55,7 @@ type Server struct {
 	done        chan bool
 	whoWas      *WhoWasList
 	ids         map[string]*Identity
+	templates   map[string]string
 }
 
 var (
@@ -82,6 +85,7 @@ func NewServer(config *Config) *Server {
 		done:        make(chan bool),
 		whoWas:      NewWhoWasList(100),
 		ids:         make(map[string]*Identity),
+		templates:   map[string]string{},
 	}
 
 	log.Debugf("accounts: %v", config.Accounts())
@@ -103,20 +107,69 @@ func NewServer(config *Config) *Server {
 
 	for addr, i2pconfig := range config.Server.I2PListen {
 		server.listeni2p(addr, i2pconfig)
-		err := ioutil.WriteFile(i2pconfig.I2Pkeys+".i2p.public.txt", []byte(i2pconfig.Base32), 0644)
-		if err != nil {
-			log.Fatalf("error storing I2P base32 address in adjacent text file")
-		}
 	}
 
 	for addr, torconfig := range config.Server.TorListen {
 		server.listentor(addr, torconfig)
-		err := ioutil.WriteFile(torconfig.Torkeys+".tor.public.txt", []byte(torconfig.Onion), 0644)
-		if err != nil {
-			log.Fatalf("error storing Tor onion address in adjacent text file")
-		}
 	}
 
+	server.templates["en"] = default_template
+	if len(config.WWW.Listen)+len(config.WWW.TLSListen)+len(config.WWW.I2PListen)+len(config.WWW.TorListen) >= 0 {
+		if config.TemplateDir != "" {
+			files, err := ioutil.ReadDir(config.TemplateDir)
+			if err != nil {
+				log.Fatalf("Template directory read error, %s", err)
+			}
+			if len(files) == 0 {
+				server.templates["en"] = default_template
+			} else {
+				for _, f := range files {
+					path := strings.Replace(f.Name(), ".template", "", -1)
+					bytes, err := ioutil.ReadFile(filepath.Join(config.TemplateDir, f.Name()))
+					if err != nil {
+						log.Fatalf("Template file load error, %s", err)
+					}
+					server.templates[path] = string(bytes)
+				}
+			}
+		} else {
+			server.templates["en"] = default_template
+		}
+		if _, ok := server.templates["en"]; !ok {
+			server.templates["en"] = default_template
+		}
+		for _, addr := range config.WWW.Listen {
+			listener, err := net.Listen("tcp", addr)
+			if err != nil {
+				log.Fatal("listen error: ", err)
+			}
+			go http.Serve(listener, server)
+		}
+
+		for addr, tlsconfig := range config.WWW.TLSListen {
+			tlslisten, err := server.tlslistener(addr, tlsconfig)
+			if err != nil {
+				log.Fatalf("HTTPS WWW site generation error, %s", err)
+			}
+			go http.Serve(tlslisten, server)
+		}
+
+		for addr, i2pconfig := range config.WWW.I2PListen {
+			i2plisten, err := server.i2plistener(addr, i2pconfig)
+			if err != nil {
+				log.Fatalf("I2P WWW site generation error, %s", err)
+			}
+			go http.Serve(i2plisten, server)
+		}
+
+		for addr, torconfig := range config.WWW.TorListen {
+			torlisten, err := server.torlistener(addr, torconfig)
+			if err != nil {
+				log.Fatalf("Tor WWW site generation error, %s", err)
+			}
+			go http.Serve(torlisten, server)
+		}
+	}
 	signal.Notify(server.signals, SERVER_SIGNALS...)
 
 	// server uptime counter
@@ -285,18 +338,22 @@ func (s *Server) listen(addr string) {
 	go s.acceptor(listener)
 }
 
-//
-// listen tls goroutine
-//
-
-func (s *Server) listentls(addr string, tlsconfig *TLSConfig) {
+func (s *Server) tlslistener(addr string, tlsconfig *TLSConfig) (net.Listener, error) {
 	cert, err := tls.LoadX509KeyPair(tlsconfig.Cert, tlsconfig.Key)
 	if err != nil {
 		log.Fatalf("error loading tls cert/key pair: %s", err)
 	}
 	config := tls.Config{Certificates: []tls.Certificate{cert}}
 	config.Rand = rand.Reader
-	listener, err := tls.Listen("tcp", addr, &config)
+	return tls.Listen("tcp", addr, &config)
+}
+
+//
+// listen tls goroutine
+//
+
+func (s *Server) listentls(addr string, tlsconfig *TLSConfig) {
+	listener, err := s.tlslistener(addr, tlsconfig)
 	if err != nil {
 		log.Fatalf("error binding to %s: %s", addr, err)
 	}
@@ -310,7 +367,8 @@ func (s *Server) listentls(addr string, tlsconfig *TLSConfig) {
 // listen i2p goroutine
 //
 
-func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
+func (s *Server) i2plistener(addr string, i2pconfig *I2PConfig) (net.Listener, error) {
+	log.Infof("Starting and registering I2P service, please wait a couple of minutes...")
 	sam, err := sam3.NewSAM(i2pconfig.SAMaddr)
 	if err != nil {
 		log.Fatalf("error connecting to SAM to %s: %s", addr, err)
@@ -346,18 +404,25 @@ func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
 		log.Fatalf("error creating I2P streaming connection %s: %s, %s.", addr, err, *keys)
 	}
 	listener, err := stream.Listen()
+
+	err = ioutil.WriteFile(i2pconfig.I2Pkeys+".i2p.public.txt", []byte(i2pconfig.Base32), 0644)
 	if err != nil {
-		log.Fatalf("error binding to %s: %s", keys.Addr().Base32(), err)
+		log.Fatalf("error storing I2P base32 address in adjacent text file, %s", err)
+
 	}
-	log.Infof("Listening on I2P address, %s", keys.Addr().Base32(), err)
+	return listener, err
+}
+
+func (s *Server) listeni2p(addr string, i2pconfig *I2PConfig) {
+	listener, err := s.i2plistener(addr, i2pconfig)
+	if err != nil {
+		log.Fatalf("error binding to %s: %s", listener.Addr().(i2pkeys.I2PAddr).Base32(), err)
+	}
+	log.Infof("Listening on I2P address, %s", listener.Addr().(i2pkeys.I2PAddr).Base32())
 	go s.acceptor(listener)
 }
 
-//
-// listen tor goroutine
-//
-
-func (s *Server) listentor(addr string, torconfig *TorConfig) {
+func (s *Server) torlistener(addr string, torconfig *TorConfig) (net.Listener, error) {
 	log.Infof("Starting and registering onion service, please wait a couple of minutes...")
 	t, err := tor.Start(nil, &tor.StartConf{ControlPort: torconfig.ControlPort})
 	if err != nil {
@@ -400,10 +465,26 @@ func (s *Server) listentor(addr string, torconfig *TorConfig) {
 		},
 	)
 	if err != nil {
-		log.Fatalf("Unable to create onion service: %v", err)
+		log.Fatalf("error setting up Tor onion address, %s", err)
 	}
 	torconfig.Onion = listener.ID + ".onion"
-	log.Infof("Listening on Onion address, %s", listener.ID, torconfig.Onion, err)
+	err = ioutil.WriteFile(torconfig.Torkeys+".tor.public.txt", []byte(listener.ID+".onion"), 0644)
+	if err != nil {
+		log.Fatalf("error storing Tor onion address in adjacent text file, %s", err)
+	}
+	return listener, err
+}
+
+//
+// listen tor goroutine
+//
+
+func (s *Server) listentor(addr string, torconfig *TorConfig) {
+	listener, err := s.torlistener(addr, torconfig)
+	if err != nil {
+		log.Fatalf("Unable to create onion service: %v", err)
+	}
+	log.Infof("Listening on Onion address, %s", listener.(*tor.OnionService).ID, torconfig.Onion, err)
 	go s.acceptor(listener)
 }
 
