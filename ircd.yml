@@ -73,7 +73,10 @@ account:
 #       controlport: 0
 #
 # This directory can be used to load templates for the informational web page
-# which can be used for alternate language support or custom pages.
+# which can be used for alternate language support or custom pages. Each temlate
+# must end with the file extension .template, and must be located in the top level
+# of the template directory. If unset or left blank, a default template in English
+# will be used instead.
 # templatedir: "lang"
 
 
