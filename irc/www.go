@@ -63,7 +63,6 @@ func (server *Server) ServeHTTP(rw http.ResponseWriter, rq *http.Request) {
 
 	rw.Header().Add("Content-Type", "text/html")
 	tmp := strings.Split(rq.URL.Path, "/")
-	log.Infof("URL Path%s", rq.URL.Path, tmp)
 	lang := "en"
 	if len(tmp) > 1 {
 		cleaned := strings.Replace(tmp[1], "/", "", -1)
@@ -76,10 +75,10 @@ func (server *Server) ServeHTTP(rw http.ResponseWriter, rq *http.Request) {
 	log.Infof("Rendering language: %d %s, %s", len(tmp), lang, server.templates[lang])
 	tmpl, err := template.New(server.config.Network.Name).Parse(server.templates[lang])
 	if err != nil {
-		log.Fatalf("Template generation error,", err)
+		log.Fatalf("Template generation error, %s", err)
 	}
 	err = tmpl.Execute(rw, server.config)
 	if err != nil {
-		log.Fatalf("Template execution error", err)
+		log.Fatalf("Template execution error, %s", err)
 	}
 }

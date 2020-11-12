@@ -484,7 +484,7 @@ func (s *Server) listentor(addr string, torconfig *TorConfig) {
 	if err != nil {
 		log.Fatalf("Unable to create onion service: %v", err)
 	}
-	log.Infof("Listening on Onion address, %s", listener.(*tor.OnionService).ID, torconfig.Onion, err)
+	log.Infof("Listening on Onion address, %s", torconfig.Onion)
 	go s.acceptor(listener)
 }
 
