@@ -19,6 +19,18 @@ type TLSConfig struct {
 	Cert string
 }
 
+type I2PConfig struct {
+	I2Pkeys string
+	SAMaddr string
+	Base32  string
+}
+
+type TorConfig struct {
+	Torkeys     string
+	ControlPort int
+	Onion       string
+}
+
 func (conf *PassConfig) PasswordBytes() []byte {
 	bytes, err := DecodePassword(conf.Password)
 	if err != nil {
@@ -39,14 +51,23 @@ type Config struct {
 		PassConfig  `yaml:",inline"`
 		Listen      []string
 		TLSListen   map[string]*TLSConfig
+		I2PListen   map[string]*I2PConfig
+		TorListen   map[string]*TorConfig
 		Log         string
 		MOTD        string
 		Name        string
 		Description string
 	}
 
-	Operator map[string]*PassConfig
-	Account  map[string]*PassConfig
+	WWW struct {
+		Listen    []string
+		TLSListen map[string]*TLSConfig
+		I2PListen map[string]*I2PConfig
+		TorListen map[string]*TorConfig
+	}
+	Operator    map[string]*PassConfig
+	Account     map[string]*PassConfig
+	TemplateDir string
 }
 
 func (conf *Config) Operators() map[Name][]byte {
@@ -111,9 +132,67 @@ func LoadConfig(filename string) (config *Config, err error) {
 		return nil, errors.New("Server name must match the format of a hostname")
 	}
 
-	if len(config.Server.Listen)+len(config.Server.TLSListen) == 0 {
+	if len(config.Server.Listen)+len(config.Server.TLSListen)+len(config.Server.I2PListen)+len(config.Server.TorListen) == 0 {
 		return nil, errors.New("Server listening addresses missing")
 	}
 
 	return config, nil
+}
+
+func (config *Config) WWWAddrs() string {
+	s := ""
+	for _, addr := range config.WWW.Listen {
+		s += addr + "\n"
+	}
+	return s
+}
+func (config *Config) TLSWWWAddrs() string {
+	s := ""
+	for addr := range config.WWW.TLSListen {
+		s += addr + "\n"
+	}
+	return s
+}
+func (config *Config) I2PWWWAddrs() string {
+	s := ""
+	for addr, i2pconfig := range config.WWW.I2PListen {
+		s += addr + ": " + i2pconfig.Base32 + "\n"
+	}
+	return s
+}
+func (config *Config) TorWWWAddrs() string {
+	s := ""
+	for addr, torconfig := range config.WWW.TorListen {
+		s += addr + ": " + torconfig.Onion + "\n"
+	}
+	return s
+}
+
+func (config *Config) IRCAddrs() string {
+	s := ""
+	for _, addr := range config.Server.Listen {
+		s += addr + "\n"
+	}
+	return s
+}
+func (config *Config) TLSIRCAddrs() string {
+	s := ""
+	for addr := range config.Server.TLSListen {
+		s += addr + "\n"
+	}
+	return s
+}
+func (config *Config) I2PIRCAddrs() string {
+	s := ""
+	for addr, i2pconfig := range config.Server.I2PListen {
+		s += addr + ": " + i2pconfig.Base32 + "\n"
+	}
+	return s
+}
+func (config *Config) TorIRCAddrs() string {
+	s := ""
+	for addr, torconfig := range config.Server.TorListen {
+		s += addr + ": " + torconfig.Onion + "\n"
+	}
+	return s
 }

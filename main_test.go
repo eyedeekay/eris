@@ -38,7 +38,7 @@ func setupServer() *eris.Server {
 
 	// SASL
 	config.Account = map[string]*eris.PassConfig{
-		"admin": &eris.PassConfig{"JDJhJDA0JGtUU1JVc1JOUy9DbEh1WEdvYVlMdGVnclp6YnA3NDBOZGY1WUZhdTZtRzVmb1VKdXQ5ckZD"},
+		"admin": {"JDJhJDA0JGtUU1JVc1JOUy9DbEh1WEdvYVlMdGVnclp6YnA3NDBOZGY1WUZhdTZtRzVmb1VKdXQ5ckZD"},
 	}
 
 	server := eris.NewServer(config)

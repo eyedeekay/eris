@@ -18,6 +18,18 @@ server:
     ":6697":
       key: key.pem
       cert: cert.pem
+  
+  # Instruct the server to listen as an I2P service.
+  # i2plisten:
+    # "invisibleirc":
+      # i2pkeys: iirc
+      # samaddr: "127.0.0.1:7656"
+
+  # Instruct the server to listen as a Tor .onion service.
+  # torlisten:
+    # hiddenirc:
+      # torkeys: tirc
+      # controlport: 0
 
   # password to login to the server
    # generated using  "mkpasswd" (from https://github.com/prologic/mkpasswd)
@@ -40,3 +52,31 @@ account:
   admin:
    # password 'admin'
    password: JDJhJDA0JGtUU1JVc1JOUy9DbEh1WEdvYVlMdGVnclp6YnA3NDBOZGY1WUZhdTZtRzVmb1VKdXQ5ckZD
+
+
+# Start a web server to help people get the information they need to connect
+# to the IRC server.
+# www: 
+#   listen:
+#     - ":8080"
+#   tlslisten:
+#     ":8443":
+#       key: key.pem
+#       cert: cert.pem
+#   i2plisten:
+#     "i2pinfoirc":
+#       i2pkeys: iirc
+#       samaddr: "127.0.0.1:7656"
+#   torlisten:
+#     torinfoirc:
+#       torkeys: tirc
+#       controlport: 0
+#
+# This directory can be used to load templates for the informational web page
+# which can be used for alternate language support or custom pages. Each temlate
+# must end with the file extension .template, and must be located in the top level
+# of the template directory. If unset or left blank, a default template in English
+# will be used instead.
+# templatedir: "lang"
+
+
