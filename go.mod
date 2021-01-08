@@ -16,6 +16,6 @@ require (
 	github.com/stretchr/testify v1.6.0
 	github.com/thoj/go-ircevent v0.0.0-20180816043103-14f3614f28c3
 	golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9
-	golang.org/x/text v0.3.4
+	golang.org/x/text v0.3.5
 	gopkg.in/yaml.v2 v2.4.0
 )
