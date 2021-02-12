@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/DanielOaks/girc-go/ircmatch"
+	"github.com/goshuirc/girc-go/ircmatch"
 )
 
 var (
