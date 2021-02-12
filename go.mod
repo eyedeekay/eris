@@ -3,7 +3,7 @@ module github.com/prologic/eris
 go 1.14
 
 require (
-	github.com/goshuirc/girc-go v0.0.0-20180430075055-8d136c4f9287
+	github.com/goshuirc/irc-go v0.0.0-20180430075055-8d136c4f9287
 	github.com/cretz/bine v0.1.0
 	github.com/eyedeekay/sam3 v0.32.32
 	github.com/google/uuid v1.1.0 // indirect

@@ -30,6 +30,8 @@ github.com/goshuirc/e-nfa v0.0.0-20160917075329-7071788e3940/go.mod h1:VOmrX6cmj
 github.com/goshuirc/girc-go v0.0.0-20180430075055-8d136c4f9287 h1:tdV3qDUia8JI6FsGxLAgu+/p2CAb7+HiHIbSFiLN4Rg=
 github.com/goshuirc/girc-go v0.0.0-20180430075055-8d136c4f9287/go.mod h1:2Dpg8BOZILzuOr3lk5AzQnpNw0QDhRy8pjSLcHCksGo=
 github.com/goshuirc/girc-go v0.0.0-20210108124156-ec778d0252a5 h1:+cwmRepatjkZ0X/n5fcMpi+OPL/aqwfjSDj3+1JJi6Q=
+github.com/goshuirc/irc-go v0.0.0-20180430075055-8d136c4f9287 h1:pa4hIAKs0KPKn60OwDb0arT0b7hoa4dhAenaht7Eu08=
+github.com/goshuirc/irc-go v0.0.0-20180430075055-8d136c4f9287/go.mod h1:rhIkxdehxNqK9iwJXWzQnxlGuuUR4cHu7PN64VryKXk=
 github.com/imdario/mergo v0.3.9 h1:UauaLniWCFHWd+Jp9oCEkTBj8VO/9DKg3PV3VCNMDIg=
 github.com/imdario/mergo v0.3.9/go.mod h1:2EnlNZ0deacrJVfApfmtdGgDfMuh/nq6Ok1EcJh5FfA=
 github.com/imdario/mergo v0.3.11 h1:3tnifQM4i+fbajXKBHXWEH+KvNHqojZ778UH75j3bGA=
